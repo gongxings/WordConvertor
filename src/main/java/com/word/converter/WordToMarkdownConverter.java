@@ -1,11 +1,7 @@
 package com.word.converter;
 
 import org.apache.poi.hwpf.HWPFDocument;
-import org.apache.poi.hwpf.usermodel.Paragraph;
-import org.apache.poi.hwpf.usermodel.Picture;
-import org.apache.poi.hwpf.usermodel.Table;
-import org.apache.poi.hwpf.usermodel.TableRow;
-import org.apache.poi.hwpf.usermodel.CharacterRun;
+import org.apache.poi.hwpf.usermodel.*;
 import org.apache.poi.xwpf.usermodel.*;
 
 import javax.imageio.ImageIO;
@@ -25,10 +21,12 @@ public class WordToMarkdownConverter {
         try (FileInputStream fis = new FileInputStream(docFile)) {
             HWPFDocument doc = new HWPFDocument(fis);
 
+            Range docRange = doc.getRange();
+
             // Process paragraphs and tables
-            int numParagraphs = doc.getRange().numParagraphs();
+            int numParagraphs = docRange.numParagraphs();
             for (int i = 0; i < numParagraphs; i++) {
-                Paragraph paragraph = doc.getRange().getParagraph(i);
+                Paragraph paragraph = docRange.getParagraph(i);
                 try {
                     // Skip table of contents paragraphs
                     if (isTableOfContents(paragraph.text())) {
@@ -36,13 +34,15 @@ public class WordToMarkdownConverter {
                         continue;
                     }
                     if (paragraph.isInTable()) {
-                        Table table = doc.getRange().getTable(paragraph);
-                        markdown.append(convertTableToMarkdown(table));
-                        while (i < numParagraphs && doc.getRange().getParagraph(i).isInTable()) {
-                            i++;
+                        if(isTableStart(paragraph, doc, i)){
+                            Table table = docRange.getTable(paragraph);
+                            markdown.append(convertTableToMarkdown(table));
+                            while (i < numParagraphs && docRange.getParagraph(i).isInTable()) {
+                                i++;
+                            }
+                            i--; // Adjust for the extra increment in the while loop
+                            logger.info("Processed table at paragraph: " + i);
                         }
-                        i--; // Adjust for the extra increment in the while loop
-                        logger.info("Processed table at paragraph: " + i);
                     } else {
                         markdown.append(processParagraph(paragraph, doc, imageDir)).append("\n");
                         logger.info("Processed paragraph: " + i);
@@ -54,6 +54,28 @@ public class WordToMarkdownConverter {
         }
         logger.info("Completed conversion of .doc file: " + docFile.getName());
         return markdown.toString();
+    }
+
+    private static boolean isTableStart(Paragraph paragraph, HWPFDocument doc, int paragraphIndex) {
+        if (!paragraph.isInTable()) {
+            return false;
+        }
+        if (paragraphIndex == 0) {
+            return true;
+        }
+        Paragraph previousParagraph = doc.getRange().getParagraph(paragraphIndex - 1);
+        return !previousParagraph.isInTable();
+    }
+
+    private static boolean isTableEnd(Paragraph paragraph, HWPFDocument doc, int paragraphIndex) {
+        if (!paragraph.isInTable()) {
+            return false;
+        }
+        if (paragraphIndex == doc.getRange().numParagraphs() - 1) {
+            return true;
+        }
+        Paragraph nextParagraph = doc.getRange().getParagraph(paragraphIndex + 1);
+        return !nextParagraph.isInTable();
     }
 
     public static String convertDocxToMarkdown(File docxFile, File imageDir) throws IOException {
