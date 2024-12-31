@@ -138,9 +138,10 @@ public class WordToMarkdownConverter {
                 String ext = picture.suggestFileExtension();
                 if (ext.isEmpty()) {
                     ext = "png"; // Default extension
-                }else if(ext.equals("emf")){
-                    ext = "jpg";
                 }
+//                else if(ext.equals("emf")){
+//                    ext = "jpg";
+//                }
                 String fullFileName = picture.suggestFullFileName();
                 String fileNameWithoutExtension = fullFileName.contains(".") ? fullFileName.substring(0, fullFileName.lastIndexOf('.')) : fullFileName;
                 String imageFileName = "image-" + fileNameWithoutExtension + "." + ext;
