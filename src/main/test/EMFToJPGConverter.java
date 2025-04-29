@@ -2,6 +2,7 @@ import org.freehep.graphicsio.emf.EMFInputStream;
 import org.freehep.graphicsio.emf.EMFRenderer;
 
 import java.awt.*;
+import java.awt.geom.AffineTransform;
 import java.awt.image.BufferedImage;
 import java.io.File;
 import java.io.FileInputStream;
@@ -24,19 +25,32 @@ public class EMFToJPGConverter {
 
             EMFRenderer emfRenderer = new EMFRenderer(inputStream);
 
-            final int width = (int)emfRenderer.getSize().getWidth();
-            final int height = (int)emfRenderer.getSize().getHeight();
-            System.out.println("widht = " + width + " and height = " + height);
-            final BufferedImage result = new BufferedImage(width*2, height*2, BufferedImage.TYPE_INT_RGB);
+//            final int width = (int)emfRenderer.getSize().getWidth();
+//            final int height = (int)emfRenderer.getSize().getHeight();
+//            System.out.println("widht = " + width + " and height = " + height);
+            Rectangle paddedBounds = new Rectangle(
+                    inputStream.readHeader().getBounds().x-50,
+                    inputStream.readHeader().getBounds().y-50,
+                    inputStream.readHeader().getBounds().width + 50,
+                    inputStream.readHeader().getBounds().height + 50
+            );
 
-            Graphics2D g2 = (Graphics2D)result.createGraphics();
+            final BufferedImage result = new BufferedImage(paddedBounds.width, paddedBounds.height, BufferedImage.TYPE_INT_RGB);
+
+            Graphics2D g2 = result.createGraphics();
+            // 可选：设置抗锯齿等参数
+            g2.setRenderingHint(RenderingHints.KEY_ANTIALIASING, RenderingHints.VALUE_ANTIALIAS_ON);
+            g2.setRenderingHint(RenderingHints.KEY_RENDERING, RenderingHints.VALUE_RENDER_QUALITY);
+
+
             // 绘制 EMF 内容
 //            g2.setBackground() // 设置背景为白色
+            g2.setTransform(new AffineTransform());
             g2.setBackground(Color.WHITE);
-            g2.clearRect(0, 0, width*3, height*3); // 清空画布，防止内容超出
-
+            g2.fillRect(0, 0, result.getWidth(), result.getHeight());
+//            g2.clearRect(paddedBounds.x,paddedBounds.y,paddedBounds.width,paddedBounds.height); // 清空画布，防止内容超出
             // 缩放绘图
-            g2.scale(2, 2);
+            g2.scale(1, 1);
 
             emfRenderer.paint(g2);
 
@@ -48,8 +62,6 @@ public class EMFToJPGConverter {
             File outputfile = new File(outputFilePath);
             ImageIO.write(result, "jpg", outputfile);
 
-        } catch (FileNotFoundException e) {
-            throw new RuntimeException(e);
         } catch (IOException e) {
             throw new RuntimeException(e);
         }
